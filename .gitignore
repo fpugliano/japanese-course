@@ -1,3 +1,9 @@
 .DS_Store
 Thumbs.db
 *.swp
+
+# Private course material (copyrighted, never publish)
+*.pdf
+private/
+
+tools/samples/

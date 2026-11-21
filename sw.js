@@ -1,7 +1,7 @@
 // Offline support: serve the app from cache, refresh it in the background.
 // Bump CACHE when you ship changes so old caches are cleared.
-const CACHE = 'nihongo-tabi-v1';
-const CORE = ['./', './index.html', './logo.js', './manifest.webmanifest', './icon.svg'];
+const CACHE = 'nihongo-tabi-v2';
+const CORE = ['./', './index.html', './course.js', './logo.js', './manifest.webmanifest', './icon.svg', './audio/manifest.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
