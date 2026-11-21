@@ -1,0 +1,14 @@
+{
+  "name": "Nihongo Tabi · Japanese for Travellers",
+  "short_name": "Nihongo Tabi",
+  "description": "Learn hiragana, katakana and the Japanese you need when travelling in Japan.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#1a1a1a",
+  "lang": "en",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

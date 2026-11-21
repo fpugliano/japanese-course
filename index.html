@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+<!-- ══ PWA / Home Screen settings ══════════════════════════
+     ICON:  icon.svg (manifest + favicon) and a PNG drawn on a
+            canvas below for the iOS home screen.
+     NAME:  Change "Nihongo Tabi" in the apple-mobile lines,
+            the <title> and manifest.webmanifest.
+═══════════════════════════════════════════════════════════ -->
+<title>Nihongo Tabi</title>
+<meta name="description" content="Learn hiragana, katakana and the Japanese you need when travelling in Japan.">
+<meta name="apple-mobile-web-app-title" content="Nihongo Tabi">
+<meta name="application-name" content="Nihongo Tabi">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a1a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" id="appIcon">
+
+<!-- Klee One: a handwriting-style face, so kana show their real stroke shapes -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap">
+
+<script src="logo.js"></script>
+<script>
+// Generate the iOS home-screen icon (Japanese flag) as a canvas PNG.
+(function() {
+  function drawIcon(size) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#bc002d';
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    return c.toDataURL('image/png');
+  }
+  window.addEventListener('DOMContentLoaded', () => {
+    const el = document.getElementById('appIcon');
+    if (el) el.href = drawIcon(180);
+    const logo = document.getElementById('headerLogo');
+    if (logo && typeof OROBORO_LOGO !== 'undefined') logo.src = OROBORO_LOGO;
+  });
+})();
+</script>
+
+<style>
+  :root {
+    --surface: #ffffff;
+    --surface2: #f2f2f7;
+    --grouped-bg: #f2f2f7;
+    --label: #000000;
+    --label2: #3c3c43cc;
+    --label3: #3c3c4399;
+    --separator: #c6c6c8;
+    --accent: #3346b8;          /* indigo (ai-iro) */
+    --accent-soft: #e4e8fa;
+    --they: #c9402b;            /* vermilion: lines spoken to you */
+    --they-soft: #fbe7e3;
+    --known: #2e9a5e;  --known-soft: #dcf2e5;
+    --learn: #c27c0e;  --learn-soft: #fbefd6;
+    --red: #ff3b30;
+    --card-radius: 12px;
+    --font: -apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+    --jp: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Noto Sans JP', Meiryo, sans-serif;
+    --glyph: 'Klee One', 'Hiragino Maru Gothic ProN', var(--jp);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface: #1c1c1e; --surface2: #2c2c2e; --grouped-bg: #000000;
+      --label: #ffffff; --label2: #ebebf5cc; --label3: #ebebf599; --separator: #38383a;
+      --accent: #8c9dff; --accent-soft: #232a52;
+      --they: #ff7b66; --they-soft: #3a1f1a;
+      --known: #5fd08f; --known-soft: #183324; --learn: #f0b453; --learn-soft: #3a2c12;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { font-family: var(--font); background: var(--grouped-bg); color: var(--label); min-height: 100vh; font-size: 17px; }
+  button { font-family: inherit; font-size: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .jp { font-family: var(--jp); }
+
+  /* ── Header + tabs ── */
+  .app-header { background: #1a1a1a; border-bottom: 1px solid rgba(255,255,255,0.08); padding: calc(12px + env(safe-area-inset-top)) 20px 10px; position: sticky; top: 0; z-index: 100; text-align: center; }
+  .app-subtitle { font-size: 13px; color: #999999; margin-top: 2px; }
+  .gear { position: absolute; right: 12px; bottom: 10px; color: #bbbbbb; font-size: 20px; padding: 6px; }
+  main { max-width: 680px; margin: 0 auto; padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); display: grid; gap: 14px; }
+  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 100; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border-top: 1px solid var(--separator); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
+  .tab { display: grid; justify-items: center; gap: 1px; font-size: 11px; font-weight: 500; color: var(--label3); padding: 4px 0; }
+  .tab b { font-family: var(--jp); font-size: 21px; line-height: 1.15; font-weight: 700; }
+  .tab.active { color: var(--accent); }
+  .badge { display: inline-block; min-width: 16px; padding: 0 4px; border-radius: 8px; background: var(--they); color: #fff; font-size: 10px; line-height: 16px; margin-left: 2px; }
+
+  /* ── Generic blocks ── */
+  .card { background: var(--surface); border-radius: var(--card-radius); padding: 16px; }
+  .section-label { font-size: 13px; font-weight: 600; color: var(--label3); text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 4px 0; }
+  .h1 { font-size: 26px; font-weight: 700; }
+  .muted { color: var(--label2); font-size: 15px; }
+  .small { font-size: 13px; color: var(--label3); }
+  .btn { display: block; width: 100%; text-align: center; background: var(--accent); color: #fff; font-weight: 600; font-size: 16px; padding: 12px; border-radius: 10px; }
+  .btn.ghost { background: var(--accent-soft); color: var(--accent); }
+  .btn.small-btn { display: inline-block; width: auto; font-size: 14px; padding: 7px 14px; border-radius: 8px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-row .btn { flex: 1; min-width: 140px; }
+  .bar { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+  .tip { background: var(--learn-soft); border-radius: 10px; padding: 12px 14px; font-size: 15px; line-height: 1.45; }
+  .tip strong { font-family: var(--jp); }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface2); border-radius: 9px; padding: 2px; }
+  .seg button { padding: 7px; border-radius: 7px; font-family: var(--jp); font-size: 15px; color: var(--label2); }
+  .seg button.on { background: var(--surface); color: var(--label); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .seg.three { grid-template-columns: repeat(3, 1fr); }
+  .seg.three button { font-family: var(--font); font-size: 14px; }
+
+  /* ── Home ── */
+  .hello { display: grid; gap: 2px; padding: 0 4px; }
+  .hello .jp { font-size: 24px; font-weight: 700; }
+  .prog { display: flex; gap: 16px; align-items: center; }
+  .ring { --p: 0; width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center;
+          background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--surface2) 0); }
+  .ring span { width: 50px; height: 50px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .prog-text { display: grid; gap: 3px; min-width: 0; }
+  .link { color: var(--accent); font-weight: 600; font-size: 15px; text-align: left; }
+  .due { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .scene-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .scene-tile { background: var(--surface); border-radius: 12px; padding: 10px; display: grid; gap: 3px; text-align: left; align-content: start; }
+  .scene-tile .em { font-size: 20px; }
+  .scene-tile .k { font-family: var(--jp); font-weight: 700; font-size: 14px; }
+  .scene-tile .e { font-size: 12px; color: var(--label3); }
+
+  /* ── Kana ── */
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--label3); padding: 0 4px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; border: 1px solid var(--separator); }
+  .chart { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .chart.c3 { grid-template-columns: repeat(3, 1fr); }
+  .chart.c4 { grid-template-columns: repeat(4, 1fr); }
+  .kc { background: var(--surface); border: 1px solid var(--separator); border-radius: 10px; padding: 6px 0 4px; display: grid; justify-items: center; }
+  .kc b { font-family: var(--glyph); font-weight: 600; font-size: 26px; line-height: 1.15; }
+  .kc small { font-size: 11px; color: var(--label3); }
+  .kc.known { background: var(--known-soft); border-color: transparent; }
+  .kc.learn { background: var(--learn-soft); border-color: transparent; }
+  .kc.empty { visibility: hidden; }
+  .units { display: grid; gap: 8px; }
+  .unit { background: var(--surface); border-radius: 12px; padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; }
+  .unit.next { box-shadow: inset 0 0 0 2px var(--accent); }
+  .unit .uk { font-family: var(--glyph); font-size: 20px; font-weight: 600; letter-spacing: 0.06em; }
+  .unit .un { font-size: 13px; color: var(--label3); }
+  .unit .bar { grid-column: 1 / -1; }
+  .unit-btns { display: flex; gap: 6px; }
+  details.card summary { font-weight: 600; cursor: pointer; }
+  details.card[open] summary { margin-bottom: 10px; }
+  .rules { display: grid; gap: 10px; font-size: 15px; line-height: 1.45; }
+  .rules .jp { font-weight: 700; }
+
+  /* ── Scenes ── */
+  .scene-list { display: grid; gap: 8px; }
+  .scene-row { background: var(--surface); border-radius: 12px; padding: 12px 14px; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center; text-align: left; }
+  .scene-row .em { font-size: 26px; grid-row: span 2; }
+  .scene-row .k { font-family: var(--jp); font-weight: 700; font-size: 17px; }
+  .scene-row .e { font-size: 13px; color: var(--label3); }
+  .scene-row .chev { color: var(--label3); grid-row: span 2; font-size: 20px; }
+  .back { color: var(--accent); font-size: 16px; font-weight: 500; text-align: left; padding: 2px 0; }
+  .scene-head { display: grid; gap: 2px; }
+  .scene-head .jp { font-size: 15px; color: var(--label3); }
+  .pills { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .pills::-webkit-scrollbar { display: none; }
+  .pill { flex-shrink: 0; border: 1px solid var(--separator); background: var(--surface); font-size: 14px; font-weight: 500; color: var(--label2); padding: 7px 14px; border-radius: 20px; white-space: nowrap; }
+  .pill.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pc { background: var(--surface); border-radius: 12px; padding: 12px 12px 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 10px; border-left: 4px solid var(--accent); }
+  .pc.they { border-left-color: var(--they); }
+  .pc-main { display: grid; gap: 3px; min-width: 0; }
+  .pc-role { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+  .pc.they .pc-role { color: var(--they); }
+  .pc-jp { font-family: var(--jp); font-size: 21px; font-weight: 500; line-height: 1.35; word-break: keep-all; overflow-wrap: anywhere; }
+  .pc-rom { font-size: 14px; color: var(--label3); font-style: italic; cursor: pointer; display: flex; flex-wrap: wrap; gap: 0 5px; }
+  .rh { position: relative; border-radius: 4px; background: var(--surface2); }
+  .rh span { visibility: hidden; }
+  .pc.reveal .rh { background: transparent; }
+  .pc.reveal .rh span { visibility: visible; }
+  .pc-en { font-size: 15px; color: var(--label2); }
+  .pc-note { font-size: 13px; color: var(--label3); line-height: 1.4; margin-top: 2px; }
+  .pc-replies { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+  .pc-replies .lbl { font-size: 12px; color: var(--label3); }
+  .chip { font-family: var(--jp); font-size: 14px; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .pc-btns { display: grid; gap: 6px; align-content: start; }
+  .spk { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 17px; display: grid; place-items: center; transition: transform .15s; }
+  .spk.slow { background: var(--accent-soft); font-size: 16px; }
+  .spk.playing, .chip.playing, .big-play.playing { transform: scale(1.08); box-shadow: 0 0 0 4px var(--accent-soft); }
+
+  /* ── Sheet (lessons, quizzes, settings) ── */
+  .sheet { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.4); display: flex; align-items: flex-end; justify-content: center; }
+  .sheet[hidden] { display: none; }
+  .sheet-panel { background: var(--grouped-bg); width: 100%; max-width: 680px; height: calc(100% - 24px - env(safe-area-inset-top)); border-radius: 16px 16px 0 0; display: flex; flex-direction: column; overflow: hidden; animation: up .22s ease-out; }
+  @keyframes up { from { transform: translateY(40px); opacity: .4; } }
+  @media (prefers-reduced-motion: reduce) { .sheet-panel { animation: none; } }
+  .sheet-head { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; padding: 12px 12px 8px; }
+  .sheet-head h2 { font-size: 17px; text-align: center; font-weight: 600; }
+  .close { font-size: 20px; color: var(--label2); width: 36px; height: 36px; border-radius: 50%; background: var(--surface2); }
+  .sheet-body { flex: 1; overflow-y: auto; padding: 8px 16px calc(24px + env(safe-area-inset-bottom)); display: grid; gap: 14px; align-content: start; }
+
+  .glyph-big { font-family: var(--glyph); font-size: 120px; font-weight: 400; text-align: center; line-height: 1.1; }
+  .glyph-r { text-align: center; font-size: 22px; font-weight: 600; color: var(--label2); }
+  .mn { background: var(--accent-soft); border-radius: 12px; padding: 12px 14px; font-size: 16px; line-height: 1.45; }
+  .word { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .word .jp { font-size: 20px; }
+  .state { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--surface2); color: var(--label2); }
+  .state.known { background: var(--known-soft); color: var(--known); }
+  .state.learn { background: var(--learn-soft); color: var(--learn); }
+  .center { text-align: center; }
+
+  .q-meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--label3); font-variant-numeric: tabular-nums; }
+  .q-label { text-align: center; font-size: 14px; font-weight: 600; color: var(--label3); text-transform: uppercase; letter-spacing: 0.04em; }
+  .q-prompt { display: grid; justify-items: center; gap: 8px; min-height: 120px; align-content: center; }
+  .q-glyph { font-family: var(--glyph); font-size: 96px; line-height: 1.1; }
+  .q-jp { font-family: var(--jp); font-size: 24px; font-weight: 500; text-align: center; line-height: 1.4; }
+  .q-en { font-size: 22px; font-weight: 600; text-align: center; }
+  .big-play { width: 80px; height: 80px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 30px; transition: transform .15s; }
+  .mini-play { color: var(--accent); font-size: 14px; font-weight: 600; }
+  .q-opts { display: grid; gap: 8px; }
+  .q-opts.grid2 { grid-template-columns: 1fr 1fr; }
+  .q-opt { background: var(--surface); border: 2px solid var(--separator); border-radius: 12px; padding: 14px 12px; font-size: 17px; font-weight: 500; text-align: center; }
+  .q-opts.grid2 .q-opt { font-size: 20px; }
+  .q-opt .jp { font-size: 18px; }
+  .q-opt .kana-opt { font-family: var(--glyph); font-size: 34px; font-weight: 600; }
+  .q-opt.ok { border-color: var(--known); background: var(--known-soft); color: var(--known); }
+  .q-opt.bad { border-color: var(--they); background: var(--they-soft); color: var(--they); }
+  .q-after { display: grid; gap: 10px; }
+  .q-after .card { font-size: 15px; line-height: 1.45; }
+  .score { font-size: 56px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
+
+  .setting { display: grid; gap: 8px; }
+  .setting h3 { font-size: 15px; font-weight: 600; }
+  .danger { color: var(--red); font-weight: 600; font-size: 15px; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <img id="headerLogo" alt="Oroboro" style="height:38px;width:auto;object-fit:contain;">
+  <div class="app-subtitle">Nihongo Tabi · Japanese for Travellers</div>
+  <button class="gear" data-act="settings" aria-label="Settings">⚙︎</button>
+</div>
+
+<main id="view"></main>
+
+<nav class="tabbar" id="tabbar"></nav>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-head">
+      <button class="close" data-act="close" aria-label="Close">✕</button>
+      <h2 id="sheetTitle"></h2>
+      <span></span>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+//  KANA DATA
+//  h/k = hiragana/katakana, r = romaji, u = learning unit,
+//  hm/km = mnemonic, hw/kw = example word, he/ke = its meaning
+// ══════════════════════════════════════
+const BASIC = [
+  { h:'あ', k:'ア', r:'a',   u:'a', hm:'A cursive “a” with a cross through it. You shout “Ah!” as you draw the loop.', hw:'ありがとう', he:'thank you',
+                                    km:'An Axe blade on a handle: “Ah!”', kw:'アイス', ke:'ice cream' },
+  { h:'い', k:'イ', r:'i',   u:'a', hm:'Two eels side by side: “ii”.', hw:'いいえ', he:'no',
+                                    km:'A painter’s easel, leaning: “ee”.', kw:'イベント', ke:'event' },
+  { h:'う', k:'ウ', r:'u',   u:'a', hm:'Someone bent over with a sore back: “ooh”.', hw:'うどん', he:'udon noodles',
+                                    km:'う with a lid on top, like a cup of oolong tea.', kw:'ウーロンちゃ', ke:'oolong tea' },
+  { h:'え', k:'エ', r:'e',   u:'a', hm:'An exotic bird with a crest on its head: “eh?”', hw:'えき', he:'station',
+                                    km:'An Elevator: two floors joined by a shaft.', kw:'エレベーター', ke:'elevator' },
+  { h:'お', k:'オ', r:'o',   u:'a', hm:'A golfer swinging, the ball flying off to the side: “Oh!”', hw:'おちゃ', he:'green tea',
+                                    km:'An Opera singer with arms spread wide.', kw:'オレンジ', ke:'orange' },
+
+  { h:'か', k:'カ', r:'ka',  u:'k', hm:'A karate chop with a splash beside it: “Ka-!”', hw:'かんぱい', he:'cheers',
+                                    km:'か without its splash mark: still a karate blade.', kw:'カード', ke:'card' },
+  { h:'き', k:'キ', r:'ki',  u:'k', hm:'An old key with two teeth.', hw:'きって', he:'stamp',
+                                    km:'The same key, drawn with straight lines.', kw:'キッチン', ke:'kitchen' },
+  { h:'く', k:'ク', r:'ku',  u:'k', hm:'The open beak of a cuckoo: “ku-ku”.', hw:'くつ', he:'shoes',
+                                    km:'A cook’s arm bent over the stove.', kw:'クーポン', ke:'coupon' },
+  { h:'け', k:'ケ', r:'ke',  u:'k', hm:'A keg standing next to its tap.', hw:'けっこうです', he:'no, thank you',
+                                    km:'A leaning letter K, short for “ke”.', kw:'ケーキ', ke:'cake' },
+  { h:'こ', k:'コ', r:'ko',  u:'k', hm:'Two coins lying flat, one above the other.', hw:'ここ', he:'here',
+                                    km:'A corner of a box: “co”-rner.', kw:'コーヒー', ke:'coffee' },
+
+  { h:'さ', k:'サ', r:'sa',  u:'s', hm:'A satellite dish on a curved stand.', hw:'さしみ', he:'sashimi',
+                                    km:'A saddle with two posts.', kw:'サイズ', ke:'size' },
+  { h:'し', k:'シ', r:'shi', u:'s', hm:'A fishhook. “She” caught a fish.', hw:'しんごう', he:'traffic light',
+                                    km:'A smiling face. The strokes slide UP to the right, unlike ツ.', kw:'シャツ', ke:'shirt' },
+  { h:'す', k:'ス', r:'su',  u:'s', hm:'A child on a swing, looping round: “swing”.', hw:'すみません', he:'excuse me',
+                                    km:'A runner’s legs mid-stride, sprinting to the super-market.', kw:'スーパー', ke:'supermarket' },
+  { h:'せ', k:'セ', r:'se',  u:'s', hm:'A mouth with one fang, about to “say” something.', hw:'せんせい', he:'teacher',
+                                    km:'The same mouth and fang, in straight lines.', kw:'セット', ke:'set (meal)' },
+  { h:'そ', k:'ソ', r:'so',  u:'s', hm:'A zig-zag thread you “sew” with.', hw:'そば', he:'soba noodles',
+                                    km:'Two strokes falling DOWN from the top, like a needle sewing. Not ン.', kw:'ソース', ke:'sauce' },
+
+  { h:'た', k:'タ', r:'ta',  u:'t', hm:'The letters “t” and “a” written side by side.', hw:'たまご', he:'egg',
+                                    km:'ク with an extra stroke inside: a taco folded around its filling.', kw:'タクシー', ke:'taxi' },
+  { h:'ち', k:'チ', r:'chi', u:'t', hm:'A number 5 written by a child: “chi”-ld’s five.', hw:'ちず', he:'map',
+                                    km:'A cheerleader with her arms held high.', kw:'チーズ', ke:'cheese' },
+  { h:'つ', k:'ツ', r:'tsu', u:'t', hm:'A tsunami wave curling over.', hw:'つぎ', he:'next',
+                                    km:'Rain falling DOWN from above, like a tsunami. Not シ.', kw:'ツアー', ke:'tour' },
+  { h:'て', k:'テ', r:'te',  u:'t', hm:'A hand reaching out to you. て means “hand”.', hw:'て', he:'hand',
+                                    km:'A telephone pole with its wires on top.', kw:'テーブル', ke:'table' },
+  { h:'と', k:'ト', r:'to',  u:'t', hm:'A toe with a splinter stuck in it.', hw:'とおい', he:'far',
+                                    km:'A totem pole with a single branch.', kw:'トイレ', ke:'toilet' },
+
+  { h:'な', k:'ナ', r:'na',  u:'n', hm:'A cross with a knot tied at the bottom: “na”-ot.', hw:'なまえ', he:'name',
+                                    km:'A plain cross: a knife and fork crossed, “nah”.', kw:'ナイフ', ke:'knife' },
+  { h:'に', k:'ニ', r:'ni',  u:'n', hm:'A knee next to two lines.', hw:'にもつ', he:'luggage',
+                                    km:'Two lines. ニ also means “two” (ni).', kw:'テニス', ke:'tennis' },
+  { h:'ぬ', k:'ヌ', r:'nu',  u:'n', hm:'Noodles on chopsticks, with a loop at the end. Like め, plus a loop.', hw:'ぬいぐるみ', he:'soft toy',
+                                    km:'Chopsticks pulling noodles out of a bowl.', kw:'ヌードル', ke:'noodle' },
+  { h:'ね', k:'ネ', r:'ne',  u:'n', hm:'A cat (ねこ) with a curly tail.', hw:'ねこ', he:'cat',
+                                    km:'A necktie hanging on a hook.', kw:'ネクタイ', ke:'necktie' },
+  { h:'の', k:'ノ', r:'no',  u:'n', hm:'A “No entry” sign: a circle with a slash.', hw:'のみもの', he:'drink',
+                                    km:'One single slash: “No!”', kw:'ノート', ke:'notebook' },
+
+  { h:'は', k:'ハ', r:'ha',  u:'h', hm:'Someone laughing “ha-ha” beside a cross.', hw:'はし', he:'chopsticks',
+                                    km:'Two strokes like a laughing open mouth: “ha!”', kw:'ハンバーガー', ke:'hamburger' },
+  { h:'ひ', k:'ヒ', r:'hi',  u:'h', hm:'A big grin: “hee hee”.', hw:'ひだり', he:'left',
+                                    km:'A heel seen from the side.', kw:'コーヒー', ke:'coffee' },
+  { h:'ふ', k:'フ', r:'fu',  u:'h', hm:'Mount Fuji with puffs of smoke around it.', hw:'ふくろ', he:'bag',
+                                    km:'The outline of Mount Fuji’s slope.', kw:'フロント', ke:'front desk' },
+  { h:'へ', k:'ヘ', r:'he',  u:'h', hm:'A gentle hill: “Hey!” from the top.', hw:'へや', he:'room',
+                                    km:'Exactly the same as へ: the hill.', kw:'ヘア', ke:'hair' },
+  { h:'ほ', k:'ホ', r:'ho',  u:'h', hm:'は with an extra rung on top, like a ladder for a garden hose.', hw:'ほん', he:'book',
+                                    km:'A cross with two little feet: holy.', kw:'ホテル', ke:'hotel' },
+
+  { h:'ま', k:'マ', r:'ma',  u:'m', hm:'A mast with two sails and a loop of rope.', hw:'まっすぐ', he:'straight ahead',
+                                    km:'A martini glass, tipped on its side.', kw:'マスク', ke:'face mask' },
+  { h:'み', k:'ミ', r:'mi',  u:'m', hm:'“21” written loosely: me at 21.', hw:'みぎ', he:'right',
+                                    km:'Three strokes: “me, me, me”.', kw:'ミルク', ke:'milk' },
+  { h:'む', k:'ム', r:'mu',  u:'m', hm:'A cow’s face with a horn: “moo”.', hw:'むずかしい', he:'difficult',
+                                    km:'A cow’s nose seen from the side: “moo”.', kw:'ハム', ke:'ham' },
+  { h:'め', k:'メ', r:'me',  u:'m', hm:'An eye. め means “eye”. Like ぬ without the loop.', hw:'め', he:'eye',
+                                    km:'An X marks “me”.', kw:'メニュー', ke:'menu' },
+  { h:'も', k:'モ', r:'mo',  u:'m', hm:'A fishhook with two worms: “more” bait.', hw:'もう', he:'already',
+                                    km:'も in straight lines: still more worms.', kw:'モール', ke:'mall' },
+
+  { h:'や', k:'ヤ', r:'ya',  u:'y', hm:'A yak with one horn up.', hw:'やさい', he:'vegetables',
+                                    km:'The sail of a yacht on its mast.', kw:'カヤック', ke:'kayak' },
+  { h:'ゆ', k:'ユ', r:'yu',  u:'y', hm:'A fish caught in a U-shaped net.', hw:'ゆかた', he:'yukata (cotton robe)',
+                                    km:'A U-turn bracket, lying on its side.', kw:'ユーロ', ke:'euro' },
+  { h:'よ', k:'ヨ', r:'yo',  u:'y', hm:'A yo-yo hanging from a finger.', hw:'よやく', he:'reservation',
+                                    km:'A backwards E: “Yo!”', kw:'ヨーグルト', ke:'yogurt' },
+
+  { h:'ら', k:'ラ', r:'ra',  u:'r', hm:'A rabbit sitting up, one ear forward.', hw:'さくら', he:'cherry blossom',
+                                    km:'A ramen bowl with a lid and one chopstick.', kw:'ラーメン', ke:'ramen' },
+  { h:'り', k:'リ', r:'ri',  u:'r', hm:'Two reeds by a river.', hw:'りんご', he:'apple',
+                                    km:'The same two reeds, straighter.', kw:'リモコン', ke:'remote control' },
+  { h:'る', k:'ル', r:'ru',  u:'r', hm:'A route that ends in a loop. ろ has no loop.', hw:'くるま', he:'car',
+                                    km:'Two legs walking down a route.', kw:'ルーム', ke:'room' },
+  { h:'れ', k:'レ', r:'re',  u:'r', hm:'Someone kneeling, kicking one leg out. Its tail kicks out, unlike わ.', hw:'これ', he:'this',
+                                    km:'A tick on a receipt.', kw:'レシート', ke:'receipt' },
+  { h:'ろ', k:'ロ', r:'ro',  u:'r', hm:'る without the loop: a road with no roundabout.', hw:'ろく', he:'six',
+                                    km:'A square box, like a robot’s head.', kw:'ロビー', ke:'lobby' },
+
+  { h:'わ', k:'ワ', r:'wa',  u:'w', hm:'A swan gliding on water. Its tail curls in, unlike れ.', hw:'わさび', he:'wasabi',
+                                    km:'A wine glass seen from the side.', kw:'ワイン', ke:'wine' },
+  { h:'を', k:'ヲ', r:'wo',  u:'w', hm:'Someone stumbling: “Whoa!” Pronounced “o”. Used only as the object particle.', hw:'を', he:'(object particle)',
+                                    km:'Rare. Pronounced “o”, seen mostly on old signs.', kw:'ヲ', ke:'(rare)' },
+  { h:'ん', k:'ン', r:'n',   u:'w', hm:'A lowercase “n” written fast.', hw:'にほん', he:'Japan',
+                                    km:'Like ソ, but the stroke sweeps UP like a smile.', kw:'パン', ke:'bread' },
+];
+
+// Voiced kana, built from their base kana: [hiragana, romaji, unit]
+const DAKU = [
+  ['がぎぐげご', 'ga gi gu ge go', 'g'],
+  ['ざじずぜぞ', 'za ji zu ze zo', 'g'],
+  ['だぢづでど', 'da ji(di) zu(du) de do', 'd'],
+  ['ばびぶべぼ', 'ba bi bu be bo', 'd'],
+  ['ぱぴぷぺぽ', 'pa pi pu pe po', 'd'],
+];
+const YOON = [
+  ['き','kya kyu kyo'], ['し','sha shu sho'], ['ち','cha chu cho'], ['に','nya nyu nyo'],
+  ['ひ','hya hyu hyo'], ['み','mya myu myo'], ['り','rya ryu ryo'], ['ぎ','gya gyu gyo'],
+  ['じ','ja ju jo'],    ['び','bya byu byo'], ['ぴ','pya pyu pyo'],
+];
+const EXT = [ // katakana only, for loanwords
+  ['ティ','ti','パーティー','party'], ['ディ','di','ディナー','dinner'], ['ファ','fa','ファミリー','family'],
+  ['フィ','fi','フィルム','film'],    ['フェ','fe','カフェ','café'],      ['フォ','fo','フォーク','fork'],
+  ['ウィ','wi','ウィンドウ','window'], ['ウェ','we','ウェイター','waiter'], ['ウォ','wo','ウォーター','water'],
+  ['シェ','she','シェフ','chef'],     ['ジェ','je','ジェット','jet'],     ['チェ','che','チェックイン','check-in'],
+  ['ヴ','vu','ヴァイオリン','violin'],
+];
+const UNITS = [
+  { id:'a', name:'Vowels' }, { id:'k', name:'K row' }, { id:'s', name:'S row' }, { id:'t', name:'T row' },
+  { id:'n', name:'N row' },  { id:'h', name:'H row' }, { id:'m', name:'M row' }, { id:'y', name:'Y row' },
+  { id:'r', name:'R row' },  { id:'w', name:'W row + n' },
+  { id:'g', name:'Voiced: g · z' }, { id:'d', name:'Voiced: d · b · p' },
+  { id:'yo', name:'Combinations (small ゃ ゅ ょ)' },
+  { id:'x', name:'Extended sounds', kataOnly:true },
+];
+const GRID = [
+  'あいうえお','かきくけこ','さしすせそ','たちつてと','なにぬねの',
+  'はひふへほ','まみむめも','や ゆ よ','らりるれろ','わ   を','ん    ',
+];
+// Kana that learners mix up. The look-alike drill and quiz distractors use these.
+const LOOKALIKES = ['シツ','ソン','ノメ','クタ','タケ','ウワ','フワ','ユコ','チテ','ナメ','マム','ぬめ','れわね','さち','はほ','るろ','いり','こに','あお','きさ','うら','けは'];
+
+const toKata = s => s.replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
+
+const KANA = { h: [], k: [] };
+const KMAP = {};
+function addKana(script, o) { o.script = script; KANA[script].push(o); KMAP[o.ch] = o; }
+
+BASIC.forEach(b => {
+  addKana('h', { ch:b.h, r:b.r, u:b.u, cat:'basic', mn:b.hm, w:b.hw, we:b.he, pair:b.k });
+  addKana('k', { ch:b.k, r:b.r, u:b.u, cat:'basic', mn:b.km, w:b.kw, we:b.ke, pair:b.h });
+});
+DAKU.forEach(([chars, roms, u]) => {
+  const rs = roms.split(' ');
+  [...chars].forEach((c, i) => {
+    const p = rs[i].startsWith('p');
+    const base = String.fromCharCode(c.charCodeAt(0) - (p ? 2 : 1));
+    const r = rs[i].replace(/\((\w+)\)/, ' ($1)');
+    const how = p ? ' + ゜ (a small circle) turns h into p.' : ' + ゛ (two ticks) makes the sound voiced.';
+    addKana('h', { ch:c, r, u, cat:'daku', mn:`${base} (${KMAP[base].r})${how}`, pair:toKata(c) });
+    const kb = toKata(base);
+    addKana('k', { ch:toKata(c), r, u, cat:'daku', mn:`${kb} (${KMAP[kb].r})${how}`, pair:c });
+  });
+});
+YOON.forEach(([base, roms]) => {
+  roms.split(' ').forEach((r, i) => {
+    const c = base + 'ゃゅょ'[i];
+    const mn = s => `${s} (${KMAP[s[0]].r}) + small ${s[1]} → one syllable, “${r}”. The small kana merges with the one before it.`;
+    addKana('h', { ch:c, r, u:'yo', cat:'yoon', mn:mn(c), pair:toKata(c) });
+    addKana('k', { ch:toKata(c), r, u:'yo', cat:'yoon', mn:mn(toKata(c)), pair:c });
+  });
+});
+EXT.forEach(([c, r, w, we]) => addKana('k', { ch:c, r, u:'x', cat:'ext', mn:`A combination made for foreign words: “${r}”.`, w, we }));
+
+const sound = o => o.r.replace(/ \(.*\)/, '').replace(/^wo$/, 'o');
+const lookalikesOf = ch => LOOKALIKES.filter(g => g.includes(ch)).join('').replace(new RegExp(ch, 'g'), '').split('');
+
+// ══════════════════════════════════════
+//  SCENES
+//  P(role, kana, romaji, kanji, english, extras)
+//  · kana:   what is displayed, with a space between words
+//  · romaji: one chunk per kana word, separated by "|"
+//  · kanji:  stored for later, and sent to the voice (reads more accurately)
+//  · extras: { note, replies: [kana replies the learner can tap] }
+//  Romaji uses doubled vowels that follow the kana: とおい → tooi, コーヒー → koohii.
+// ══════════════════════════════════════
+const P = (role, kana, romaji, kanji, en, x = {}) => ({ role, kana, rom: romaji.split('|').map(s => s.trim()), say: kanji, en, ...x });
+
+const SCENES = [
+{ id:'greet', em:'👋', kana:'あいさつ', en:'Greetings', lessons:[
+  { title:'Hello & goodbye',
+    tip:'In <strong>こんにちは</strong> and <strong>こんばんは</strong> the final <strong>は</strong> is read “wa”. It was once the topic particle: “as for today…”.',
+    phrases:[
+      P('you','おはよう ございます','ohayou | gozaimasu','おはようございます','Good morning', { note:'With friends, just おはよう.' }),
+      P('you','こんにちは','konnichiwa','こんにちは','Hello / Good afternoon'),
+      P('you','こんばんは','konbanwa','こんばんは','Good evening'),
+      P('you','おやすみなさい','oyasuminasai','おやすみなさい','Good night'),
+      P('you','さようなら','sayounara','さようなら','Goodbye', { note:'Sounds quite final. Day to day people say じゃあ、また or しつれいします.' }),
+      P('you','じゃあ、 また','jaa, | mata','じゃあ、また','See you (casual)'),
+      P('you','しつれい します','shitsurei | shimasu','失礼します','Excuse me (entering or leaving)', { note:'Said when entering an office or room, or hanging up the phone.' }),
+    ]},
+  { title:'Polite basics',
+    tip:'<strong>すみません</strong> covers “excuse me”, “sorry” and “thanks for the trouble”. When in doubt, say it with a small bow.',
+    phrases:[
+      P('you','はじめまして','hajimemashite','初めまして','Nice to meet you'),
+      P('you','よろしく おねがいします','yoroshiku | onegaishimasu','よろしくお願いします','Pleased to meet you / I’m in your hands', { note:'Said after introducing yourself, and whenever you ask someone for help.' }),
+      P('you','ありがとう ございます','arigatou | gozaimasu','ありがとうございます','Thank you very much'),
+      P('they','どう いたしまして','dou | itashimashite','どういたしまして','You’re welcome'),
+      P('you','すみません','sumimasen','すみません','Excuse me / Sorry'),
+      P('you','だいじょうぶです','daijoubu desu','大丈夫です','I’m OK / No, thanks', { note:'Very handy for politely declining anything.' }),
+      P('you','おつかれさまです','otsukaresama desu','お疲れ様です','Thanks for your hard work', { note:'A greeting between people who work or travel together.' }),
+    ]},
+]},
+{ id:'rest', em:'🍜', kana:'レストラン', en:'At the restaurant', lessons:[
+  { title:'Getting a table',
+    tip:'Staff shout <strong>いらっしゃいませ</strong> when you walk in. You don’t need to answer: a nod or a smile is perfect.',
+    phrases:[
+      P('they','いらっしゃいませ！','irasshaimase!','いらっしゃいませ！','Welcome!'),
+      P('they','なんめいさまですか？','nanmeisama desu ka?','何名様ですか？','How many people?', { replies:['ひとりです','ふたりです'] }),
+      P('you','ふたりです','futari desu','二人です','Two people', { note:'ひとり 1 · ふたり 2 · さんにん 3 · よにん 4' }),
+      P('you','よやく して いません','yoyaku | shite | imasen','予約していません','We don’t have a reservation'),
+      P('they','しょうしょう おまち ください','shoushou | omachi | kudasai','少々お待ちください','Please wait a moment'),
+      P('they','こちらへ どうぞ','kochira e | douzo','こちらへどうぞ','This way, please', { note:'The particle へ is read “e”.' }),
+      P('you','えいごの メニューは ありますか？','eigo no | menyuu wa | arimasu ka?','英語のメニューはありますか？','Do you have an English menu?'),
+    ]},
+  { title:'Ordering & paying',
+    tip:'Call staff with <strong>すみません！</strong> and a raised hand. There’s no tipping. In ramen shops you often order at a ticket machine (しょっけん) by the door.',
+    phrases:[
+      P('you','すみません！','sumimasen!','すみません！','Excuse me! (calling staff)'),
+      P('they','ごちゅうもんは おきまりですか？','gochuumon wa | okimari desu ka?','ご注文はお決まりですか？','Are you ready to order?', { replies:['はい','もう すこし まって ください'] }),
+      P('you','もう すこし まって ください','mou | sukoshi | matte | kudasai','もう少し待ってください','Please wait a little more'),
+      P('you','これを ください','kore o | kudasai','これをください','This one, please', { note:'Point at the menu. を is read “o”.' }),
+      P('you','おすすめは なんですか？','osusume wa | nan desu ka?','おすすめは何ですか？','What do you recommend?'),
+      P('you','おみずを ください','omizu o | kudasai','お水をください','Water, please'),
+      P('you','おかいけい おねがいします','okaikei | onegaishimasu','お会計お願いします','The bill, please', { note:'Usually you pay at the register by the door, not at the table.' }),
+      P('you','カードで はらえますか？','kaado de | haraemasu ka?','カードで払えますか？','Can I pay by card?'),
+    ]},
+]},
+{ id:'hotel', em:'🏨', kana:'ホテル', en:'At the hotel', lessons:[
+  { title:'Checking in',
+    tip:'Front desk staff use very polite Japanese. Listen for <strong>おねがいします</strong> (please) and <strong>ください</strong> (please do).',
+    phrases:[
+      P('you','チェックイン おねがいします','chekkuin | onegaishimasu','チェックインお願いします','Check-in, please'),
+      P('you','よやく して います','yoyaku | shite | imasu','予約しています','I have a reservation'),
+      P('you','〇〇の なまえで よやく して います','〇〇 no | namae de | yoyaku | shite | imasu','〇〇の名前で予約しています','It’s booked under the name ___', { note:'〇〇 (“maru maru”) is the Japanese way of writing “blank”.' }),
+      P('they','パスポートを おねがいします','pasupooto o | onegaishimasu','パスポートをお願いします','Your passport, please'),
+      P('they','こちらに ごきにゅう ください','kochira ni | gokinyuu | kudasai','こちらにご記入ください','Please fill this in'),
+      P('they','おへやは ごかいです','oheya wa | gokai desu','お部屋は五階です','Your room is on the 5th floor'),
+      P('you','チェックアウトは なんじですか？','chekkuauto wa | nanji desu ka?','チェックアウトは何時ですか？','What time is check-out?'),
+    ]},
+  { title:'During your stay',
+    tip:'Ryokan and many hotels have an <strong>おんせん</strong> (hot spring bath). Wash before getting in, and leave towels out of the water.',
+    phrases:[
+      P('you','にもつを あずかって もらえますか？','nimotsu o | azukatte | moraemasu ka?','荷物を預かってもらえますか？','Could you keep my luggage?'),
+      P('you','Wi-Fiの パスワードは なんですか？','waifai no | pasuwaado wa | nan desu ka?','Wi-Fiのパスワードは何ですか？','What’s the Wi-Fi password?'),
+      P('you','ちょうしょくは なんじからですか？','choushoku wa | nanji kara desu ka?','朝食は何時からですか？','What time does breakfast start?'),
+      P('you','タオルを もう いちまい ください','taoru o | mou | ichimai | kudasai','タオルをもう一枚ください','One more towel, please', { note:'いちまい counts flat things: towels, tickets, paper.' }),
+      P('you','へやの かぎを なくしました','heya no | kagi o | nakushimashita','部屋の鍵をなくしました','I lost my room key'),
+      P('you','タクシーを よんで もらえますか？','takushii o | yonde | moraemasu ka?','タクシーを呼んでもらえますか？','Could you call a taxi?'),
+      P('you','おんせんは なんじまでですか？','onsen wa | nanji made desu ka?','温泉は何時までですか？','Until what time is the hot spring open?'),
+    ]},
+]},
+{ id:'dir', em:'🗺️', kana:'みちを きく', en:'Asking directions', lessons:[
+  { title:'Asking the way',
+    tip:'Start with <strong>すみません</strong>. Distances are usually given in walking minutes: <strong>あるいて ごふん</strong> means 5 minutes on foot.',
+    phrases:[
+      P('you','すみません、 えきは どこですか？','sumimasen, | eki wa | doko desu ka?','すみません、駅はどこですか？','Excuse me, where is the station?'),
+      P('you','トイレは どこですか？','toire wa | doko desu ka?','トイレはどこですか？','Where is the toilet?'),
+      P('you','ここから とおいですか？','koko kara | tooi desu ka?','ここから遠いですか？','Is it far from here?'),
+      P('you','あるいて なんぷんですか？','aruite | nanpun desu ka?','歩いて何分ですか？','How many minutes on foot?'),
+      P('you','この ちかくに コンビニは ありますか？','kono | chikaku ni | konbini wa | arimasu ka?','この近くにコンビニはありますか？','Is there a konbini near here?'),
+      P('you','ちずで おしえて もらえますか？','chizu de | oshiete | moraemasu ka?','地図で教えてもらえますか？','Could you show me on the map?'),
+      P('you','もう いちど おねがいします','mou | ichido | onegaishimasu','もう一度お願いします','Once more, please'),
+    ]},
+  { title:'Understanding the answer',
+    tip:'Key words: <strong>みぎ</strong> right · <strong>ひだり</strong> left · <strong>まっすぐ</strong> straight · <strong>かど</strong> corner · <strong>しんごう</strong> traffic light.',
+    phrases:[
+      P('they','まっすぐ いって ください','massugu | itte | kudasai','まっすぐ行ってください','Go straight ahead'),
+      P('they','つぎの しんごうを みぎに まがって ください','tsugi no | shingou o | migi ni | magatte | kudasai','次の信号を右に曲がってください','Turn right at the next traffic light'),
+      P('they','ひだりに あります','hidari ni | arimasu','左にあります','It’s on the left'),
+      P('they','あの たてものの となりです','ano | tatemono no | tonari desu','あの建物の隣です','It’s next to that building'),
+      P('they','えきの まえです','eki no | mae desu','駅の前です','It’s in front of the station'),
+      P('they','あるいて ごふん ぐらいです','aruite | gofun | gurai desu','歩いて五分ぐらいです','About five minutes on foot'),
+      P('they','ちょっと とおいですね','chotto | tooi desu ne','ちょっと遠いですね','It’s a bit far'),
+    ]},
+]},
+{ id:'ice', em:'💬', kana:'かいわ', en:'Ice breakers', lessons:[
+  { title:'About you',
+    tip:'Japanese people often compliment any attempt at Japanese. The modest reply <strong>いえいえ、まだまだです</strong> always goes down well.',
+    phrases:[
+      P('they','どちらから ですか？','dochira kara | desu ka?','どちらからですか？','Where are you from?'),
+      P('you','〇〇から きました','〇〇 kara | kimashita','〇〇から来ました','I’m from ___ (lit. I came from ___)'),
+      P('you','にほんごを べんきょう して います','nihongo o | benkyou | shite | imasu','日本語を勉強しています','I’m studying Japanese'),
+      P('they','にほんごが じょうずですね！','nihongo ga | jouzu desu ne!','日本語が上手ですね！','Your Japanese is good!', { replies:['いえいえ、まだまだです'] }),
+      P('you','いえいえ、 まだまだです','ieie, | madamada desu','いえいえ、まだまだです','Oh no, I still have a long way to go'),
+      P('they','にほんは はじめてですか？','nihon wa | hajimete desu ka?','日本は初めてですか？','Is this your first time in Japan?', { replies:['はい、はじめてです','にかいめです'] }),
+      P('you','にかいめです','nikaime desu','二回目です','It’s my second time'),
+    ]},
+  { title:'Keeping it going',
+    tip:'<strong>LINE</strong> (ライン) is how almost everyone in Japan messages. Asking to swap LINE is the normal way to stay in touch.',
+    phrases:[
+      P('you','しゅみは なんですか？','shumi wa | nan desu ka?','趣味は何ですか？','What are your hobbies?'),
+      P('you','おしごとは なんですか？','oshigoto wa | nan desu ka?','お仕事は何ですか？','What do you do for work?'),
+      P('you','おすすめの ばしょは ありますか？','osusume no | basho wa | arimasu ka?','おすすめの場所はありますか？','Any places you’d recommend?'),
+      P('you','いいですね！','ii desu ne!','いいですね！','That’s nice! / Sounds good!'),
+      P('you','すごい！','sugoi!','すごい！','Wow! / Amazing!'),
+      P('you','しゃしんを とっても いいですか？','shashin o | tottemo | ii desu ka?','写真を撮ってもいいですか？','May I take a photo?'),
+      P('you','ラインを こうかん しませんか？','rain o | koukan | shimasen ka?','LINEを交換しませんか？','Shall we exchange LINE?'),
+      P('you','また あいましょう','mata | aimashou','また会いましょう','Let’s meet again'),
+    ]},
+]},
+{ id:'table', em:'🥢', kana:'しょくたく', en:'At the dinner table', lessons:[
+  { title:'Before & during the meal',
+    tip:'Never stand chopsticks upright in rice, and never pass food from chopsticks to chopsticks: both are linked to funerals.',
+    phrases:[
+      P('you','いただきます','itadakimasu','いただきます','(said before eating)', { note:'Literally “I humbly receive”. Hands together, small nod.' }),
+      P('you','かんぱい！','kanpai!','乾杯！','Cheers!', { note:'Wait for everyone’s glass to be filled. Pour for others, never for yourself.' }),
+      P('you','おいしい！','oishii!','おいしい！','Delicious!'),
+      P('you','とても おいしいです','totemo | oishii desu','とてもおいしいです','It’s very tasty'),
+      P('you','これは なんですか？','kore wa | nan desu ka?','これは何ですか？','What is this?'),
+      P('you','どうやって たべますか？','dou yatte | tabemasu ka?','どうやって食べますか？','How do you eat this?'),
+      P('you','ちょっと からいです','chotto | karai desu','ちょっと辛いです','It’s a bit spicy'),
+    ]},
+  { title:'Being a good guest',
+    tip:'Finishing everything on your plate is polite. If you can’t eat more, <strong>もう おなか いっぱいです</strong> is the graceful way out.',
+    phrases:[
+      P('they','どうぞ、 めしあがって ください','douzo, | meshiagatte | kudasai','どうぞ、召し上がってください','Please, help yourself'),
+      P('they','おかわりは いかがですか？','okawari wa | ikaga desu ka?','おかわりはいかがですか？','Would you like another helping?', { replies:['はい、いただきます','もう おなか いっぱいです'] }),
+      P('you','もう おなか いっぱいです','mou | onaka | ippai desu','もうお腹いっぱいです','I’m already full'),
+      P('you','おさけは あまり のめません','osake wa | amari | nomemasen','お酒はあまり飲めません','I can’t drink much alcohol'),
+      P('you','えびの アレルギーが あります','ebi no | arerugii ga | arimasu','えびのアレルギーがあります','I’m allergic to shrimp', { note:'Swap えび for: たまご egg · ぎゅうにゅう milk · こむぎ wheat · ナッツ nuts.' }),
+      P('you','ほんとうに おいしかったです','hontou ni | oishikatta desu','本当においしかったです','It was really delicious'),
+      P('you','ごちそうさまでした','gochisousama deshita','ごちそうさまでした','Thank you for the meal (after eating)', { note:'Also said to the staff as you leave a restaurant.' }),
+    ]},
+]},
+{ id:'super', em:'🛒', kana:'スーパー', en:'At the supermarket', lessons:[
+  { title:'Finding things',
+    tip:'In the evening, look for <strong>はんがく</strong> (half price) and <strong>わりびき</strong> (discount) stickers on fresh food and bento.',
+    phrases:[
+      P('you','たまごは どこに ありますか？','tamago wa | doko ni | arimasu ka?','卵はどこにありますか？','Where are the eggs?'),
+      P('they','こちらに ございます','kochira ni | gozaimasu','こちらにございます','It’s over here', { note:'ございます is the very polite form of あります.' }),
+      P('you','これは いくらですか？','kore wa | ikura desu ka?','これはいくらですか？','How much is this?'),
+      P('you','ぎゅうにゅうは ありますか？','gyuunyuu wa | arimasu ka?','牛乳はありますか？','Do you have milk?'),
+      P('they','ただいま きれて おります','tadaima | kirete | orimasu','ただいま切れております','We’re out of stock right now'),
+      P('you','これは わりびきですか？','kore wa | waribiki desu ka?','これは割引ですか？','Is this discounted?'),
+    ]},
+  { title:'At the checkout',
+    tip:'Bags cost a few yen. Many supermarkets have a <strong>セルフレジ</strong> (self-checkout), often with an English button.',
+    phrases:[
+      P('they','レジぶくろは ごりようですか？','rejibukuro wa | goriyou desu ka?','レジ袋はご利用ですか？','Would you like a plastic bag?', { replies:['いいえ、だいじょうぶです','はい、おねがいします'] }),
+      P('you','いいえ、 だいじょうぶです','iie, | daijoubu desu','いいえ、大丈夫です','No, I’m fine'),
+      P('they','ポイントカードは おもちですか？','pointo kaado wa | omochi desu ka?','ポイントカードはお持ちですか？','Do you have a points card?', { replies:['もって いません'] }),
+      P('you','もって いません','motte | imasen','持っていません','I don’t have one'),
+      P('they','おしはらいは どう されますか？','oshiharai wa | dou | saremasu ka?','お支払いはどうされますか？','How would you like to pay?', { replies:['げんきんで おねがいします','カードで おねがいします'] }),
+      P('you','げんきんで おねがいします','genkin de | onegaishimasu','現金でお願いします','Cash, please'),
+      P('you','セルフレジは どこですか？','serufu reji wa | doko desu ka?','セルフレジはどこですか？','Where is the self-checkout?'),
+    ]},
+]},
+{ id:'konbini', em:'🏪', kana:'コンビニ', en:'At the konbini', lessons:[
+  { title:'At the till',
+    tip:'Konbini staff use keigo (very polite speech). You only need to <strong>understand</strong> it: short replies like <strong>はい、おねがいします</strong> are perfect.',
+    phrases:[
+      P('they','おべんとう あたためますか？','obentou | atatamemasu ka?','お弁当温めますか？','Shall I heat up your bento?', { replies:['はい、おねがいします','いいえ、けっこうです'] }),
+      P('you','はい、 おねがいします','hai, | onegaishimasu','はい、お願いします','Yes, please'),
+      P('you','いいえ、 けっこうです','iie, | kekkou desu','いいえ、結構です','No, thank you'),
+      P('they','おはしは おつけしますか？','ohashi wa | otsuke shimasu ka?','お箸はおつけしますか？','Would you like chopsticks?', { replies:['はい、おねがいします','だいじょうぶです'] }),
+      P('they','ふくろに おいれしますか？','fukuro ni | oire shimasu ka?','袋にお入れしますか？','Shall I put it in a bag?'),
+      P('they','レシートは よろしいですか？','reshiito wa | yoroshii desu ka?','レシートはよろしいですか？','Is it OK without the receipt?', { note:'Ambiguous on purpose! Answer clearly: いりません (don’t need) or ください (please).', replies:['レシートは いりません'] }),
+      P('you','レシートは いりません','reshiito wa | irimasen','レシートはいりません','I don’t need the receipt'),
+    ]},
+  { title:'Paying & extras',
+    tip:'Put cash in the small tray rather than in the cashier’s hand. For konbini coffee, buy the cup at the till, then use the machine yourself.',
+    phrases:[
+      P('you','ICカードで おねがいします','IC kaado de | onegaishimasu','ICカードでお願いします','With my IC card (Suica / PASMO), please'),
+      P('you','カードで おねがいします','kaado de | onegaishimasu','カードでお願いします','By card, please'),
+      P('they','こちらに タッチして ください','kochira ni | tacchi shite | kudasai','こちらにタッチしてください','Please tap here'),
+      P('you','ホットコーヒーの Mを ください','hotto koohii no | emu o | kudasai','ホットコーヒーのMをください','A medium hot coffee, please'),
+      P('you','ATMは ありますか？','ATM wa | arimasu ka?','ATMはありますか？','Is there an ATM?', { note:'Konbini ATMs (especially 7-Eleven) accept foreign cards.' }),
+      P('you','トイレを かりても いいですか？','toire o | karitemo | ii desu ka?','トイレを借りてもいいですか？','May I use the toilet?'),
+      P('they','ありがとう ございました','arigatou | gozaimashita','ありがとうございました','Thank you (for shopping with us)'),
+    ]},
+]},
+{ id:'depa', em:'🛍️', kana:'デパート', en:'At the department store', lessons:[
+  { title:'Finding & trying',
+    tip:'The basement (<strong>デパちか</strong>) is a giant food hall, great for gifts and tasting. Floors: <strong>いっかい</strong> 1F · <strong>ちか いっかい</strong> B1.',
+    phrases:[
+      P('you','くつうりばは なんがいですか？','kutsu uriba wa | nangai desu ka?','靴売り場は何階ですか？','Which floor is the shoe section on?', { note:'Swap くつ for: ふく clothes · かばん bags · けしょうひん cosmetics.' }),
+      P('they','ちか いっかいで ございます','chika | ikkai de | gozaimasu','地下一階でございます','It’s on the first basement floor (B1)'),
+      P('you','みて いる だけです','mite | iru | dake desu','見ているだけです','I’m just looking'),
+      P('they','ごゆっくり どうぞ','goyukkuri | douzo','ごゆっくりどうぞ','Take your time'),
+      P('you','しちゃく しても いいですか？','shichaku | shitemo | ii desu ka?','試着してもいいですか？','May I try it on?'),
+      P('you','もっと おおきい サイズは ありますか？','motto | ookii | saizu wa | arimasu ka?','もっと大きいサイズはありますか？','Do you have a bigger size?', { note:'Smaller: ちいさい (chiisai).' }),
+      P('you','ほかの いろは ありますか？','hoka no | iro wa | arimasu ka?','他の色はありますか？','Do you have other colours?'),
+    ]},
+  { title:'Buying',
+    tip:'Visitors can shop <strong>めんぜい</strong> (tax-free) above a minimum spend. Bring your passport.',
+    phrases:[
+      P('you','これに します','kore ni | shimasu','これにします','I’ll take this one'),
+      P('you','めんぜい できますか？','menzei | dekimasu ka?','免税できますか？','Can I buy it tax-free?'),
+      P('they','パスポートを おもちですか？','pasupooto o | omochi desu ka?','パスポートをお持ちですか？','Do you have your passport?'),
+      P('they','プレゼントようですか？','purezento you desu ka?','プレゼント用ですか？','Is it a gift?', { replies:['はい、プレゼントです','じぶんようです'] }),
+      P('you','じぶんようです','jibun you desu','自分用です','It’s for myself'),
+      P('you','ラッピング して もらえますか？','rappingu | shite | moraemasu ka?','ラッピングしてもらえますか？','Could you gift-wrap it?'),
+      P('they','ほかに なにか おさがしですか？','hoka ni | nanika | osagashi desu ka?','他に何かお探しですか？','Are you looking for anything else?', { replies:['だいじょうぶです'] }),
+    ]},
+]},
+];
+
+// Give each phrase a stable id and a back-reference to its scene
+const PHRASES = [];
+const PH_BY_KANA = {};
+SCENES.forEach(sc => sc.lessons.forEach((l, li) => l.phrases.forEach((p, pi) => {
+  p.id = `${sc.id}.${li}.${pi}`;
+  p.scene = sc;
+  PHRASES.push(p);
+  PH_BY_KANA[p.kana.replace(/\s/g, '')] = p;
+  if (p.rom.length !== p.kana.split(' ').length) console.warn('Romaji/kana word count mismatch:', p.kana);
+})));
+
+// ══════════════════════════════════════
+//  PROGRESS (localStorage)
+//  srs[key] = { b: box 1–5, d: due timestamp }. Keys: "k:ふ", "p:konbini.0.0"
+// ══════════════════════════════════════
+const STORE_KEY = 'nihongo-tabi-v1';
+const DEFAULTS = { srs:{}, streak:0, last:'', script:'h', romaji:'fade', best:{}, tab:'home' };
+let S = load();
+function load() {
+  try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORE_KEY) || '{}') }; }
+  catch (e) { return { ...DEFAULTS }; }
+}
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} }
+
+const MIN = 60e3, DAY = 864e5;
+const INTERVALS = [0, 10 * MIN, DAY, 3 * DAY, 7 * DAY, 21 * DAY];
+function grade(key, ok) {
+  const r = S.srs[key] || { b: 0 };
+  r.b = ok ? Math.min(5, r.b + 1) : 1;
+  r.d = Date.now() + INTERVALS[r.b];
+  S.srs[key] = r;
+  touchStreak();
+  save();
+}
+function setBox(key, b) { S.srs[key] = { b, d: Date.now() + INTERVALS[b] }; }
+function boxOf(key) { return (S.srs[key] || {}).b || 0; }
+function stateOf(key) { const b = boxOf(key); return b >= 3 ? 'known' : b >= 1 ? 'learn' : 'new'; }
+const kstate = ch => stateOf('k:' + ch);
+
+function today() { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
+function touchStreak() {
+  const t = today();
+  if (S.last === t) return;
+  const y = new Date(Date.now() - DAY);
+  S.streak = (S.last === `${y.getFullYear()}-${y.getMonth() + 1}-${y.getDate()}`) ? S.streak + 1 : 1;
+  S.last = t;
+}
+function streakNow() {
+  const y = new Date(Date.now() - DAY);
+  return (S.last === today() || S.last === `${y.getFullYear()}-${y.getMonth() + 1}-${y.getDate()}`) ? S.streak : 0;
+}
+function dueKeys() {
+  const now = Date.now();
+  return Object.keys(S.srs).filter(k => S.srs[k].d <= now && (k.startsWith('p:') ? PHRASES.some(p => 'p:' + p.id === k) : KMAP[k.slice(2)]))
+    .sort((a, b) => S.srs[a].d - S.srs[b].d);
+}
+
+// ══════════════════════════════════════
+//  AUDIO
+//  Same approach as the Greek app: an optional TTS Worker for neural
+//  voices, falling back to the best Japanese voice the device has.
+// ══════════════════════════════════════
+const TTS_WORKER_URL = 'YOUR_WORKER_URL_HERE';
+const audioCache = {};
+let currentAudio = null, currentBtn = null, jaVoice = null;
+
+// Rank the device's Japanese voices: premium/enhanced/neural first.
+function pickJaVoice() {
+  if (!window.speechSynthesis) return null;
+  const voices = speechSynthesis.getVoices().filter(v => /^ja([-_]|$)/i.test(v.lang));
+  const score = v => {
+    const n = v.name;
+    let s = 0;
+    if (/premium/i.test(n)) s += 60;
+    if (/enhanced|拡張/i.test(n)) s += 50;
+    if (/natural|neural|online/i.test(n)) s += 55;   // Edge / Windows natural voices (Nanami, Keita)
+    if (/google/i.test(n)) s += 35;                   // Chrome's Google 日本語
+    if (/o-ren|kyoko|otoya|hattori|nanami|keita|mizuki/i.test(n)) s += 10;
+    if (/eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley/i.test(n)) s -= 30; // novelty voices
+    return s;
+  };
+  return voices.sort((a, b) => score(b) - score(a))[0] || null;
+}
+if (window.speechSynthesis) {
+  jaVoice = pickJaVoice();
+  speechSynthesis.onvoiceschanged = () => { jaVoice = pickJaVoice(); };
+}
+
+function setPlaying(btn, on) {
+  if (currentBtn && currentBtn !== btn) currentBtn.classList.remove('playing');
+  if (btn) btn.classList.toggle('playing', on);
+  currentBtn = on ? btn : null;
+}
+function stopAudio() {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  setPlaying(null, false);
+}
+
+async function speak(text, btn, slow) {
+  stopAudio();
+  if (!TTS_WORKER_URL || TTS_WORKER_URL === 'YOUR_WORKER_URL_HERE') return speakBrowser(text, btn, slow);
+  setPlaying(btn, true);
+  try {
+    let b64 = audioCache[text];
+    if (!b64) {
+      const res = await fetch(TTS_WORKER_URL, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ text, lang:'ja-JP' }) });
+      if (!res.ok) throw new Error('Worker returned ' + res.status);
+      b64 = (await res.json()).audio;
+      audioCache[text] = b64;
+    }
+    const audio = new Audio('data:audio/mp3;base64,' + b64);
+    audio.playbackRate = slow ? 0.7 : 1;
+    currentAudio = audio;
+    audio.onended = () => setPlaying(btn, false);
+    audio.onerror = () => { setPlaying(btn, false); speakBrowser(text, btn, slow); };
+    await audio.play();
+  } catch (err) {
+    console.warn('TTS Worker failed, using browser voice:', err);
+    speakBrowser(text, btn, slow);
+  }
+}
+function speakBrowser(text, btn, slow) {
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ja-JP';
+  if (!jaVoice) jaVoice = pickJaVoice();
+  if (jaVoice) u.voice = jaVoice;
+  u.rate = slow ? 0.6 : 0.9;
+  setPlaying(btn, true);
+  u.onend = u.onerror = () => setPlaying(btn, false);
+  speechSynthesis.speak(u);
+}
+
+// ══════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const SMALL = 'ゃゅょぁぃぅぇぉャュョァィゥェォ';
+const isKana = c => /[ぁ-ゖァ-ヺ]/.test(c);
+
+// Split a word into readable units: きゃ and ティ count as one, っ and ー ride along.
+function kanaTokens(word) {
+  const t = [];
+  for (const c of word) {
+    if (c === 'っ' || c === 'ッ' || c === 'ー' || !isKana(c)) continue;
+    if (SMALL.includes(c) && t.length) { t[t.length - 1] += c; continue; }
+    t.push(c);
+  }
+  return t;
+}
+function tokenKnown(tok) {
+  if (KMAP[tok]) return kstate(tok) === 'known';
+  return [...tok].every(c => !KMAP[c] || kstate(c) === 'known');
+}
+function wordKnown(word) { const t = kanaTokens(word); return t.length > 0 && t.every(tokenKnown); }
+const disp = kana => kana.replace(/、 /g, '、');
+function sayFor(kana) { const p = PH_BY_KANA[kana.replace(/\s/g, '')]; return p ? p.say : kana; }
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 11 ? 'おはよう ございます' : h < 18 ? 'こんにちは' : 'こんばんは';
+}
+function unitsFor(sc) { return UNITS.filter(u => !(u.kataOnly && sc === 'h')); }
+function unitItems(sc, uid) { return KANA[sc].filter(i => i.u === uid); }
+function nextUnit(sc) {
+  const us = unitsFor(sc);
+  return us.find(u => unitItems(sc, u.id).some(i => kstate(i.ch) === 'new'))
+      || us.find(u => unitItems(sc, u.id).some(i => kstate(i.ch) !== 'known')) || null;
+}
+function sceneProgress(sc) {
+  const ps = PHRASES.filter(p => p.scene === sc);
+  return ps.filter(p => boxOf('p:' + p.id) >= 2).length / ps.length;
+}
+const scriptName = sc => sc === 'h' ? 'Hiragana' : 'Katakana';
+
+// ══════════════════════════════════════
+//  VIEWS
+// ══════════════════════════════════════
+let view = { tab: S.tab || 'home', scene: null, lesson: 0 };
+
+function renderTabs() {
+  const due = dueKeys().length;
+  const tabs = [['home','家','Home'], ['kana','あ','Kana'], ['scenes','話','Scenes'], ['review','↻','Review']];
+  $('tabbar').innerHTML = tabs.map(([id, g, label]) =>
+    `<button class="tab ${view.tab === id ? 'active' : ''}" data-act="tab" data-tab="${id}"><b>${g}</b><span>${label}${id === 'review' && due ? `<span class="badge">${due}</span>` : ''}</span></button>`).join('');
+}
+
+function render() {
+  renderTabs();
+  const v = $('view');
+  if (view.tab === 'home') v.innerHTML = homeHTML();
+  if (view.tab === 'kana') v.innerHTML = kanaHTML();
+  if (view.tab === 'scenes') v.innerHTML = view.scene ? sceneHTML() : scenesHTML();
+  if (view.tab === 'review') v.innerHTML = reviewHTML();
+}
+
+function homeHTML() {
+  const sc = S.script;
+  const basic = KANA[sc].filter(i => i.cat === 'basic');
+  const known = basic.filter(i => kstate(i.ch) === 'known').length;
+  const learning = basic.filter(i => kstate(i.ch) === 'learn').length;
+  const pct = Math.round(known / basic.length * 100);
+  const nu = nextUnit(sc);
+  const due = dueKeys();
+  const dk = due.filter(k => k.startsWith('k:')).length, dp = due.length - dk;
+  const st = streakNow();
+  return `
+    <div class="hello"><span class="jp">${greeting()}</span><span class="small">${st ? `🔥 ${st}-day streak` : 'Start a streak today'}</span></div>
+    <div class="card prog">
+      <div class="ring" style="--p:${pct}"><span>${pct}%</span></div>
+      <div class="prog-text">
+        <b>${scriptName(sc)}: ${known} / ${basic.length} known</b>${learning ? `<span class="small">${learning} learning: they become known after a review tomorrow</span>` : ''}
+        <span class="small">${nu ? `Next: <span class="jp">${unitItems(sc, nu.id).slice(0, 5).map(i => i.ch).join(' ')}</span>` : 'All units learned 🎉'}</span>
+        ${nu ? `<button class="link" data-act="learn" data-u="${nu.id}">Continue →</button>` : ''}
+      </div>
+    </div>
+    <div class="card due">
+      <div><b>Review</b><div class="small">${due.length ? `${dk} kana · ${dp} phrases due` : 'Nothing due right now'}</div></div>
+      <button class="btn small-btn ${due.length ? '' : 'ghost'}" data-act="review">${due.length ? 'Start' : 'Practise'}</button>
+    </div>
+    <div class="section-label">Scenes</div>
+    <div class="scene-grid">
+      ${SCENES.map(s => `
+        <button class="scene-tile" data-act="scene" data-id="${s.id}">
+          <span class="em">${s.em}</span><span class="k">${s.kana}</span><span class="e">${s.en.replace(/^At the (.)/, (m, c) => c.toUpperCase())}</span>
+          <div class="bar"><i style="width:${Math.round(sceneProgress(s) * 100)}%"></i></div>
+        </button>`).join('')}
+    </div>`;
+}
+
+function kanaCell(ch) {
+  if (!ch || ch === ' ') return `<div class="kc empty"></div>`;
+  const it = KMAP[ch];
+  return `<button class="kc ${kstate(ch)}" data-act="kana" data-ch="${ch}" aria-label="${ch} ${it.r}"><b>${ch}</b><small>${it.r}</small></button>`;
+}
+function kanaHTML() {
+  const sc = S.script;
+  const conv = s => sc === 'h' ? s : toKata(s);
+  const nu = nextUnit(sc);
+  const best = S.best[sc];
+  return `
+    <div class="seg"><button class="${sc === 'h' ? 'on' : ''}" data-act="script" data-s="h">ひらがな</button><button class="${sc === 'k' ? 'on' : ''}" data-act="script" data-s="k">カタカナ</button></div>
+    <div class="legend"><span><i style="background:var(--known-soft)"></i>Known</span><span><i style="background:var(--learn-soft)"></i>Learning</span><span><i style="background:var(--surface)"></i>New</span><span>Tap to hear</span></div>
+    <div class="chart">${GRID.map(row => [...row].map(c => kanaCell(c === ' ' ? null : conv(c))).join('')).join('')}</div>
+
+    <div class="btn-row">
+      <button class="btn" data-act="speed">⚡ Speed round${best ? ` · best ${best.toFixed(1)}s` : ''}</button>
+      <button class="btn ghost" data-act="lookalike">👀 Look-alikes</button>
+    </div>
+
+    <div class="section-label">Learning path</div>
+    <div class="units">
+      ${unitsFor(sc).map(u => {
+        const items = unitItems(sc, u.id);
+        const k = items.filter(i => kstate(i.ch) === 'known').length;
+        const l = items.filter(i => kstate(i.ch) === 'learn').length;
+        return `<div class="unit ${nu && nu.id === u.id ? 'next' : ''}">
+          <div><div class="uk">${items.slice(0, 5).map(i => i.ch).join(' ')}${items.length > 5 ? ' …' : ''}</div><div class="un">${u.name} · ${k}/${items.length} known${l ? ` · ${l} learning` : ''}</div></div>
+          <div class="unit-btns">
+            <button class="btn small-btn" data-act="learn" data-u="${u.id}">${k === items.length ? 'Practise' : 'Learn'}</button>
+            ${k < items.length ? `<button class="btn small-btn ghost" data-act="test" data-u="${u.id}" title="Quick test: kana you get right are marked as known">Test out</button>` : ''}
+          </div>
+          <div class="bar" style="display:flex"><i style="width:${k / items.length * 100}%;background:var(--known)"></i><i style="width:${l / items.length * 100}%;background:var(--learn)"></i></div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="section-label">More kana</div>
+    <div class="card" style="display:grid;gap:12px">
+      <div class="small">Voiced ゛ ゜</div>
+      <div class="chart">${KANA[sc].filter(i => i.cat === 'daku').map(i => kanaCell(i.ch)).join('')}</div>
+      <div class="small">Combinations</div>
+      <div class="chart c3">${KANA[sc].filter(i => i.cat === 'yoon').map(i => kanaCell(i.ch)).join('')}</div>
+      ${sc === 'k' ? `<div class="small">Extended (for foreign words)</div><div class="chart c4">${KANA.k.filter(i => i.cat === 'ext').map(i => kanaCell(i.ch)).join('')}</div>` : ''}
+    </div>
+
+    <details class="card">
+      <summary>Reading rules</summary>
+      <div class="rules">
+        <p><span class="jp">っ / ッ</span> (small tsu) doubles the next consonant: <span class="jp">きって</span> kitte (stamp), <span class="jp">ベッド</span> beddo (bed).</p>
+        <p><span class="jp">ー</span> stretches the vowel in katakana: <span class="jp">コーヒー</span> koohii, <span class="jp">カード</span> kaado.</p>
+        <p>In hiragana, long vowels are written out: <span class="jp">おかあさん</span> okaasan, <span class="jp">とおい</span> tooi, <span class="jp">ありがとう</span> arigatou (the う lengthens the お).</p>
+        <p>Three particles break the rules: <span class="jp">は</span> is read “wa”, <span class="jp">へ</span> “e”, <span class="jp">を</span> “o”.</p>
+        <p><span class="jp">ん</span> before b, p or m sounds like “m”: <span class="jp">かんぱい</span> kampai.</p>
+      </div>
+    </details>`;
+}
+
+function scenesHTML() {
+  return `
+    <div class="hello"><span class="h1">Scenes</span><span class="small">Red lines are what you’ll hear. Blue lines are what you say.</span></div>
+    <div class="scene-list">${SCENES.map(s => {
+      const n = PHRASES.filter(p => p.scene === s).length;
+      return `<button class="scene-row" data-act="scene" data-id="${s.id}">
+        <span class="em">${s.em}</span><span class="k">${s.kana}</span><span class="chev">›</span>
+        <span class="e">${s.en} · ${n} phrases · ${Math.round(sceneProgress(s) * 100)}%</span>
+      </button>`;
+    }).join('')}</div>`;
+}
+
+function romajiHTML(p) {
+  return p.kana.split(' ').map((w, i) => {
+    const r = esc(p.rom[i] || '');
+    const hide = S.romaji === 'never' || (S.romaji === 'fade' && wordKnown(w));
+    return hide ? `<span class="rh"><span>${r}</span></span>` : `<span>${r}</span>`;
+  }).join('');
+}
+function phraseCard(p) {
+  const hidden = S.romaji !== 'always' && /class="rh"/.test(romajiHTML(p));
+  return `<div class="pc ${p.role}">
+    <div class="pc-main">
+      <span class="pc-role">${p.role === 'they' ? 'They say' : 'You say'}</span>
+      <span class="pc-jp">${disp(p.kana)}</span>
+      <span class="pc-rom" data-act="reveal" ${hidden ? 'title="Tap to show romaji"' : ''}>${romajiHTML(p)}</span>
+      <span class="pc-en">${esc(p.en)}</span>
+      ${p.note ? `<span class="pc-note">${p.note}</span>` : ''}
+      ${p.replies ? `<div class="pc-replies"><span class="lbl">Reply:</span>${p.replies.map(r => `<button class="chip" data-act="say" data-text="${esc(sayFor(r))}">${r}</button>`).join('')}</div>` : ''}
+    </div>
+    <div class="pc-btns">
+      <button class="spk" data-act="say" data-text="${esc(p.say)}" aria-label="Play">🔊</button>
+      <button class="spk slow" data-act="say" data-slow="1" data-text="${esc(p.say)}" aria-label="Play slowly">🐢</button>
+    </div>
+  </div>`;
+}
+function sceneHTML() {
+  const s = SCENES.find(x => x.id === view.scene);
+  const l = s.lessons[view.lesson];
+  return `
+    <button class="back" data-act="back">‹ Scenes</button>
+    <div class="scene-head"><span class="h1">${s.em} ${s.en}</span><span class="jp">${s.kana}</span></div>
+    <div class="pills">${s.lessons.map((x, i) => `<button class="pill ${i === view.lesson ? 'on' : ''}" data-act="lesson" data-i="${i}">${x.title}</button>`).join('')}</div>
+    <div class="tip">💡 ${l.tip}</div>
+    ${l.phrases.map(phraseCard).join('')}
+    <div class="btn-row">
+      <button class="btn" data-act="pquiz">Quiz this lesson</button>
+      <button class="btn ghost" data-act="plisten">🎧 Listening</button>
+    </div>
+    <p class="small center">Romaji: ${S.romaji === 'fade' ? 'fading as you learn kana' : S.romaji}. Tap a grey block to reveal it. Change this in ⚙︎ Settings.</p>`;
+}
+
+function reviewHTML() {
+  const due = dueKeys();
+  const dk = due.filter(k => k.startsWith('k:')).length;
+  const all = Object.keys(S.srs);
+  const nextDue = all.length ? Math.min(...all.map(k => S.srs[k].d)) : null;
+  const known = all.filter(k => S.srs[k].b >= 3);
+  const fmt = ms => ms < 3600e3 ? `${Math.max(1, Math.round(ms / 60e3))} min` : ms < DAY ? `${Math.round(ms / 3600e3)} h` : `${Math.round(ms / DAY)} days`;
+  return `
+    <div class="hello"><span class="h1">Review</span><span class="small">Spaced repetition: each item comes back just before you’d forget it.</span></div>
+    <div class="card" style="display:grid;gap:12px">
+      ${due.length
+        ? `<div><b>${due.length} due now</b><div class="small">${dk} kana · ${due.length - dk} phrases</div></div><button class="btn" data-act="review">Start review</button>`
+        : `<div><b>All caught up</b><div class="small">${nextDue ? `Next item due in ${fmt(nextDue - Date.now())}.` : 'Learn some kana or quiz a scene to fill your review queue.'}</div></div>
+           ${all.length ? `<button class="btn ghost" data-act="review">Practise anyway</button>` : ''}`}
+    </div>
+    <div class="card" style="display:grid;gap:6px">
+      <b>Your progress</b>
+      <div class="small">Hiragana known: ${KANA.h.filter(i => kstate(i.ch) === 'known').length} / ${KANA.h.length}</div>
+      <div class="small">Katakana known: ${KANA.k.filter(i => kstate(i.ch) === 'known').length} / ${KANA.k.length}</div>
+      <div class="small">Phrases known: ${known.filter(k => k.startsWith('p:')).length} / ${PHRASES.length}</div>
+    </div>`;
+}
+
+// ══════════════════════════════════════
+//  SHEET: kana detail, unit lessons, quizzes, settings
+// ══════════════════════════════════════
+function openSheet(title, html) {
+  $('sheetTitle').textContent = title;
+  $('sheetBody').innerHTML = html;
+  $('sheetBody').scrollTop = 0;
+  $('sheet').hidden = false;
+}
+function closeSheet() { stopTimer(); stopAudio(); $('sheet').hidden = true; Q = null; render(); }
+
+function kanaCardHTML(it) {
+  const st = kstate(it.ch);
+  return `
+    <div class="glyph-big">${it.ch}</div>
+    <div class="glyph-r">${it.r}</div>
+    <div class="center"><span class="state ${st}">${st === 'known' ? 'Known' : st === 'learn' ? 'Learning' : 'New'}</span></div>
+    <div class="btn-row"><button class="btn" data-act="say" data-text="${it.ch}">🔊 Hear it</button>${it.pair ? `<button class="btn ghost" data-act="kana" data-ch="${it.pair}">${it.script === 'h' ? 'Katakana' : 'Hiragana'}: ${it.pair}</button>` : ''}</div>
+    <div class="mn">${it.mn}</div>
+    ${it.w ? `<div class="card word"><div><div class="jp">${it.w}</div><div class="small">${esc(it.we)}</div></div><button class="spk" data-act="say" data-text="${esc(it.w)}" aria-label="Play">🔊</button></div>` : ''}`;
+}
+function openKana(ch) {
+  const it = KMAP[ch];
+  openSheet(`${scriptName(it.script)} · ${it.r}`, kanaCardHTML(it) + `
+    <div class="btn-row">
+      <button class="btn ghost" data-act="markknown" data-ch="${ch}">Mark as known</button>
+      <button class="btn ghost" data-act="markreset" data-ch="${ch}">Reset</button>
+    </div>`);
+  speak(ch);
+}
+
+// Unit lesson: flashcards for each kana, then a quiz.
+let L = null;
+function startLesson(uid) {
+  const items = unitItems(S.script, uid);
+  L = { uid, items, i: 0 };
+  showLessonCard();
+}
+function showLessonCard() {
+  const it = L.items[L.i];
+  const u = UNITS.find(x => x.id === L.uid);
+  openSheet(`${u.name} · ${L.i + 1} / ${L.items.length}`, `
+    <div class="bar"><i style="width:${(L.i + 1) / L.items.length * 100}%"></i></div>
+    ${kanaCardHTML(it)}
+    <button class="btn" data-act="lnext">${L.i < L.items.length - 1 ? 'Next' : 'Start quiz →'}</button>`);
+  speak(it.ch);
+}
+function lessonNext() {
+  if (L.i < L.items.length - 1) { L.i++; showLessonCard(); return; }
+  const items = L.items, u = UNITS.find(x => x.id === L.uid);
+  const gen = () => shuffle([...items.map(i => kanaQ(i, 'read')), ...items.map(i => kanaQ(i, 'listen'))]);
+  runQuiz({ title: u.name + ' quiz', gen });
+}
+
+// ── Question builders ──
+function pickDistractors(item, n) {
+  const pool = KANA[item.script];
+  const out = [], seen = new Set([sound(item)]);
+  const add = o => { if (o && o !== item && !seen.has(sound(o)) && out.length < n) { out.push(o); seen.add(sound(o)); } };
+  shuffle(lookalikesOf(item.ch).map(c => KMAP[c])).forEach(add);
+  shuffle(pool.filter(o => o.u === item.u)).forEach(add);
+  shuffle(pool.filter(o => o.cat === item.cat)).forEach(add);
+  shuffle(pool).forEach(add);
+  return out;
+}
+function kanaAfter(it) {
+  return `<div class="card"><span class="jp" style="font-size:22px;font-weight:700">${it.ch}</span> = <b>${it.r}</b><br><span class="small">${it.mn}</span></div>`;
+}
+function kanaQ(it, type) {
+  const opts = shuffle([it, ...pickDistractors(it, 3)]);
+  const base = { key: 'k:' + it.ch, a: opts.indexOf(it), after: kanaAfter(it) };
+  if (type === 'listen') return { ...base, label: 'Which kana do you hear?',
+    prompt: `<button class="big-play" data-act="say" data-text="${it.ch}" aria-label="Play again">▶</button>`,
+    speak: it.ch, opts: opts.map(o => `<span class="kana-opt">${o.ch}</span>`), grid: true };
+  return { ...base, label: 'How do you read this?', prompt: `<div class="q-glyph">${it.ch}</div>`,
+    opts: opts.map(o => esc(o.r)), grid: true, speakAfter: it.ch };
+}
+function phraseAfter(p) {
+  return `<div class="card"><div class="jp" style="font-size:19px">${disp(p.kana)}</div><div class="small"><i>${esc(p.rom.join(' '))}</i></div><div>${esc(p.en)}</div></div>`;
+}
+function phraseQ(p, type) {
+  const sameScene = PHRASES.filter(o => o.scene === p.scene && o !== p && o.en !== p.en);
+  const others = shuffle(sameScene).slice(0, 3);
+  const opts = shuffle([p, ...others]);
+  const base = { key: 'p:' + p.id, a: opts.indexOf(p), after: phraseAfter(p) };
+  if (type === 'hear') return { ...base, label: p.role === 'they' ? 'What did they say?' : 'What does this mean?',
+    prompt: `<button class="big-play" data-act="say" data-text="${esc(p.say)}" aria-label="Play again">▶</button><button class="mini-play" data-act="say" data-slow="1" data-text="${esc(p.say)}">🐢 Play slowly</button>`,
+    speak: p.say, opts: opts.map(o => esc(o.en)) };
+  if (type === 'say') return { ...base, label: 'How do you say…', prompt: `<div class="q-en">${esc(p.en)}</div>`,
+    opts: opts.map(o => `<span class="jp">${disp(o.kana)}</span>`), speakAfter: p.say };
+  return { ...base, label: 'What does this mean?',
+    prompt: `<div class="q-jp">${disp(p.kana)}</div><button class="mini-play" data-act="say" data-text="${esc(p.say)}">🔊 Listen</button>`,
+    opts: opts.map(o => esc(o.en)) };
+}
+
+// ── Quiz runner ──
+let Q = null, timerId = null;
+function stopTimer() { if (timerId) { clearInterval(timerId); timerId = null; } }
+function runQuiz(cfg) {
+  stopTimer();
+  Q = { ...cfg, qs: cfg.gen(), i: 0, right: 0, wrong: 0, answered: false, start: Date.now() };
+  if (cfg.speed) timerId = setInterval(() => { const t = $('qTimer'); if (t) t.textContent = ((Date.now() - Q.start) / 1000).toFixed(1) + 's'; }, 100);
+  showQuestion();
+}
+function showQuestion() {
+  const q = Q.qs[Q.i];
+  Q.answered = false;
+  openSheet(Q.title, `
+    <div class="bar"><i style="width:${Q.i / Q.qs.length * 100}%"></i></div>
+    <div class="q-meta"><span>${Q.i + 1} / ${Q.qs.length}</span><span>${Q.speed ? `<span id="qTimer">0.0s</span>` : `✓ ${Q.right}`}</span></div>
+    <div class="q-label">${q.label}</div>
+    <div class="q-prompt">${q.prompt}</div>
+    <div class="q-opts ${q.grid ? 'grid2' : ''}">${q.opts.map((o, i) => `<button class="q-opt" data-act="ans" data-i="${i}">${o}</button>`).join('')}</div>
+    <div class="q-after" id="qAfter"></div>`);
+  if (q.speak) speak(q.speak);
+}
+function answer(i) {
+  if (!Q || Q.answered) return;
+  Q.answered = true;
+  const q = Q.qs[Q.i], ok = i === q.a;
+  const btns = document.querySelectorAll('.q-opt');
+  btns[q.a].classList.add('ok');
+  if (!ok) btns[i].classList.add('bad');
+  ok ? Q.right++ : Q.wrong++;
+  if (q.key) {
+    if (Q.placement && ok) {
+      // Test-out: a right answer counts as already known
+      if (boxOf(q.key) < 3) setBox(q.key, 3);
+      touchStreak();
+      save();
+    } else grade(q.key, ok);
+  }
+  if (Q.speed) { setTimeout(nextQuestion, ok ? 120 : 700); return; }
+  if (q.speakAfter) speak(q.speakAfter);
+  $('qAfter').innerHTML = (ok ? '' : q.after) +
+    `<button class="btn" data-act="qnext">${Q.i < Q.qs.length - 1 ? 'Next' : 'See results'}</button>`;
+  if (ok) setTimeout(() => { if (Q && Q.answered && Q.qs[Q.i] === q) nextQuestion(); }, 900);
+}
+function nextQuestion() {
+  if (!Q) return;
+  if (Q.i < Q.qs.length - 1) { Q.i++; showQuestion(); return; }
+  stopTimer();
+  const secs = (Date.now() - Q.start) / 1000;
+  let extra = '';
+  if (Q.speed) {
+    const prev = S.best[S.script];
+    const record = Q.wrong === 0 && (!prev || secs < prev);
+    if (record) { S.best[S.script] = secs; save(); }
+    extra = `<p class="center muted">${secs.toFixed(1)} seconds${record ? ' · new best! 🏆' : Q.wrong ? ' · get them all right to set a best time' : ''}</p>`;
+  }
+  const pct = Math.round(Q.right / Q.qs.length * 100);
+  openSheet(Q.title, `
+    <div class="score">${Q.right}/${Q.qs.length}</div>
+    <p class="center muted">${pct === 100 ? 'Perfect! 🎉' : pct >= 70 ? 'Nice work. Mistakes go into your review queue.' : 'Keep going. The ones you missed will come back soon.'}</p>
+    ${extra}
+    <div class="btn-row"><button class="btn ghost" data-act="again">Try again</button><button class="btn" data-act="close">Done</button></div>`);
+}
+
+// ── Quiz entry points ──
+function startSpeed() {
+  const sc = S.script;
+  const basic = KANA[sc].filter(i => i.cat === 'basic');
+  const learned = basic.filter(i => kstate(i.ch) !== 'new');
+  const pool = learned.length >= 10 ? learned : basic;
+  runQuiz({ title: '⚡ Speed round', speed: true, gen: () => shuffle(pool).slice(0, 20).map(i => kanaQ(i, 'read')) });
+}
+function startLookalike() {
+  const sc = S.script;
+  const chars = [...new Set(LOOKALIKES.join(''))].filter(c => KMAP[c] && KMAP[c].script === sc);
+  runQuiz({ title: '👀 Look-alikes', gen: () => shuffle(chars).slice(0, 15).map(c => kanaQ(KMAP[c], 'read')) });
+}
+function startTest(uid) {
+  const u = UNITS.find(x => x.id === uid);
+  runQuiz({ title: `Test out · ${u.name}`, placement: true, gen: () => shuffle(unitItems(S.script, uid)).map(i => kanaQ(i, 'read')) });
+}
+function lessonPhrases() { return SCENES.find(x => x.id === view.scene).lessons[view.lesson].phrases; }
+function startPhraseQuiz() {
+  const ps = lessonPhrases();
+  runQuiz({ title: 'Lesson quiz', gen: () => shuffle(ps).map((p, i) => phraseQ(p, p.role === 'they' ? (i % 2 ? 'hear' : 'meaning') : (i % 2 ? 'say' : 'meaning'))) });
+}
+function startListening() {
+  const ps = lessonPhrases();
+  runQuiz({ title: '🎧 Listening', gen: () => shuffle(ps).map(p => phraseQ(p, 'hear')) });
+}
+function startReview() {
+  const gen = () => {
+    let keys = dueKeys();
+    if (!keys.length) keys = shuffle(Object.keys(S.srs));
+    return shuffle(keys.slice(0, 20)).map(k => {
+      if (k.startsWith('k:')) return kanaQ(KMAP[k.slice(2)], Math.random() < 0.5 ? 'read' : 'listen');
+      const p = PHRASES.find(x => 'p:' + x.id === k);
+      return phraseQ(p, ['meaning', 'say', 'hear'][Math.floor(Math.random() * 3)]);
+    }).filter(Boolean);
+  };
+  if (!Object.keys(S.srs).length) { view.tab = 'kana'; render(); return; }
+  runQuiz({ title: 'Review', gen });
+}
+
+// ── Settings ──
+function openSettings() {
+  const v = jaVoice;
+  const all = window.speechSynthesis ? speechSynthesis.getVoices().filter(x => /^ja/i.test(x.lang)) : [];
+  openSheet('Settings', `
+    <div class="card setting">
+      <h3>Romaji under phrases</h3>
+      <div class="seg three">
+        ${[['fade','Fading'],['always','Always'],['never','Never']].map(([m, l]) => `<button class="${S.romaji === m ? 'on' : ''}" data-act="romaji" data-m="${m}">${l}</button>`).join('')}
+      </div>
+      <p class="small">Fading hides romaji for words whose kana you already know. Tap a hidden word to peek.</p>
+    </div>
+    <div class="card setting">
+      <h3>Voice</h3>
+      <p class="muted">${v ? `Using <b>${esc(v.name)}</b>` : 'No Japanese voice found on this device yet.'}${all.length > 1 ? ` (${all.length} Japanese voices available)` : ''}</p>
+      <button class="btn ghost" data-act="say" data-text="こんにちは。日本語の勉強、頑張りましょう！">🔊 Test voice</button>
+      <p class="small">For the most natural sound on iPhone or Mac, download a better voice: Settings → Accessibility → Spoken Content → Voices → Japanese → <b>Kyoko (Enhanced)</b> or <b>O-ren (Premium)</b>. Then reopen the app. On Android, install “Japanese” in Google Speech Services.</p>
+    </div>
+    <div class="card setting">
+      <h3>Progress</h3>
+      <p class="small">Saved on this device only.</p>
+      <button class="danger" data-act="reset">Reset all progress</button>
+    </div>`);
+}
+
+// ══════════════════════════════════════
+//  EVENTS
+// ══════════════════════════════════════
+const ACTIONS = {
+  tab: d => { view.tab = d.tab; if (d.tab !== 'scenes') view.scene = null; S.tab = d.tab; save(); render(); window.scrollTo(0, 0); },
+  script: d => { S.script = d.s; save(); render(); },
+  kana: d => openKana(d.ch),
+  learn: d => { if (view.tab !== 'kana') { view.tab = 'kana'; render(); } startLesson(d.u); },
+  lnext: () => lessonNext(),
+  test: d => startTest(d.u),
+  speed: () => startSpeed(),
+  lookalike: () => startLookalike(),
+  scene: d => { view.tab = 'scenes'; view.scene = d.id; view.lesson = 0; render(); window.scrollTo(0, 0); },
+  back: () => { view.scene = null; render(); },
+  lesson: d => { view.lesson = +d.i; render(); },
+  say: (d, el) => speak(d.text, el, !!d.slow),
+  reveal: (d, el) => el.closest('.pc').classList.toggle('reveal'),
+  pquiz: () => startPhraseQuiz(),
+  plisten: () => startListening(),
+  review: () => startReview(),
+  ans: d => answer(+d.i),
+  qnext: () => nextQuestion(),
+  again: () => runQuiz(Q),
+  close: () => closeSheet(),
+  settings: () => openSettings(),
+  romaji: d => { S.romaji = d.m; save(); openSettings(); },
+  markknown: d => { setBox('k:' + d.ch, 3); save(); openKana(d.ch); },
+  markreset: d => { delete S.srs['k:' + d.ch]; save(); openKana(d.ch); },
+  reset: () => { if (confirm('Reset all progress? This cannot be undone.')) { S = { ...DEFAULTS }; save(); closeSheet(); } },
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const fn = ACTIONS[el.dataset.act];
+  if (fn) fn(el.dataset, el);
+});
+$('sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
+document.addEventListener('keydown', e => {
+  if ($('sheet').hidden) return;
+  if (e.key === 'Escape') closeSheet();
+  if (Q && !Q.answered && /^[1-4]$/.test(e.key)) answer(+e.key - 1);
+  else if (Q && Q.answered && e.key === 'Enter') nextQuestion();
+});
+
+render();
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service worker failed:', err));
+}
+</script>
+</body>
+</html>
